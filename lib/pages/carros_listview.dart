@@ -1,10 +1,10 @@
-
-import 'package:carros/bloc/CarroBloc.dart';
+import 'package:carros/mobx/carro_model.dart';
 import 'package:carros/model/carro.dart';
 import 'package:carros/pages/carro_page.dart';
 import 'package:carros/util/nav.dart';
 import 'package:carros/widgets/text_error.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_mobx/flutter_mobx.dart';
 
 class CarrosListView extends StatefulWidget {
   final String tipo;
@@ -15,12 +15,13 @@ class CarrosListView extends StatefulWidget {
   _CarrosListViewState createState() => _CarrosListViewState();
 }
 
-class _CarrosListViewState extends State<CarrosListView> with AutomaticKeepAliveClientMixin<CarrosListView>{
+class _CarrosListViewState extends State<CarrosListView>
+    with AutomaticKeepAliveClientMixin<CarrosListView> {
   List<Carro> carros;
 
   String get tipo => widget.tipo;
 
-  final _bloc = CarroBloc();
+  final _model = CarroModel();
 
   @override
   bool get wantKeepAlive => true;
@@ -29,25 +30,32 @@ class _CarrosListViewState extends State<CarrosListView> with AutomaticKeepAlive
   void initState() {
     // TODO: implement initState
     super.initState();
-    _bloc.fetch(tipo);
+    _fetch();
+  }
+
+  void _fetch() {
+    _model.fetch(tipo);
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    return StreamBuilder(
-      stream: _bloc.stream,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return TextError("Não foi possivel recuperar os carros");
+    return Observer(
+      builder: (context) {
+        List<Carro> carros = _model.carros;
+
+        if (_model.error != null) {
+          return TextError(
+            "Não foi possivel recuperar os carros. \n\n Clique para tentar novamente",
+            onPressed: _fetch,
+          );
         }
-        if (!snapshot.hasData) {
+        if (carros == null) {
           return Center(
             child: CircularProgressIndicator(),
           );
         }
-        List<Carro> carros = snapshot.data;
         return _listView(carros);
       },
     );
@@ -115,11 +123,5 @@ class _CarrosListViewState extends State<CarrosListView> with AutomaticKeepAlive
   _onClickDetalheCarro(c) {
     push(context, CarroPage(c));
     /* ... */
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _bloc.dispose();
   }
 }
